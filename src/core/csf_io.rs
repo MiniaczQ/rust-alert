@@ -212,7 +212,7 @@ impl CsfWriter {
 mod tests {
     use std::io::Read;
 
-    use crate::core::{csf::{CsfStringtable, CsfLabel, CsfString}, csf_io::{CsfReader, CsfWriter}};
+    use crate::core::{csf::{CsfStringtable, CsfLabel, CsfString, Error}, csf_io::{CsfReader, CsfWriter}};
 
     fn make_string(string: impl Into<String>, extra_string: impl Into<String>) -> Vec<u8> {
         let string = string.into();
@@ -237,7 +237,6 @@ mod tests {
         let expected = CsfString::new(str);
         let actual = CsfReader::read_string(reader);
 
-        dbg!(&actual);
         assert!(actual.is_ok());
         assert_eq!(actual.unwrap(), expected);
     }
@@ -253,8 +252,22 @@ mod tests {
         let expected = CsfString{ value: str.into(), extra_value: wstr.into() };
         let actual = CsfReader::read_string(reader);
 
-        dbg!(&actual);
         assert!(actual.is_ok());
         assert_eq!(actual.unwrap(), expected);
     }
+
+    #[test]
+    /// Read a CsfString (missing prefix).
+    fn read_string_err() {
+        let str = "String";
+        let mut buf = make_string(str, "");
+        buf[1] = 0;
+        let reader: &mut dyn Read = &mut buf.as_slice();
+
+        let actual = CsfReader::read_string(reader);
+
+        assert!(actual.is_err());
+        assert!(matches!(actual.expect_err(""), Error::RtsOrWrtsMissingPrefix));
+    }
+
 }
